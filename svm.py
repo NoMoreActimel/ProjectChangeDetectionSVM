@@ -11,6 +11,7 @@ from PIL import Image # image opening
 import math
 import os
 
+
 # PLOTTING
 def plot_array_as_image(X, m, n, is_1d=False):
     if is_1d:
@@ -26,6 +27,12 @@ def plot_array_as_image_color(X, m, n, is_1d=False):
     plt.figure(figsize=(8, 8))
     plt.imshow(X)
 
+
+def plot_image(Im):
+    plt.figure(1, (8, 8))
+    plt.imshow(Im)
+
+    
 def plot_deltas(count_deltas, p_value_ind):
     plt.figure(figsize=(8, 8))
 
@@ -38,11 +45,13 @@ def plot_deltas(count_deltas, p_value_ind):
 class Data:
     # IMAGE SCANNING
     def scan_img_color(self, path_img1, path_img2):
-        img1 = Image.open(path_img1)
-        img2 = Image.open(path_img2)
+        self.img1 = list()
+        self.img2 = list()
+        self.img1.append(Image.open(path_img1))
+        self.img2.append(Image.open(path_img2))
 
         # take the difference between two images
-        difference = np.array(img1, dtype=np.int16) - np.array(img2, dtype=np.int16)
+        difference = np.array(self.img1[0], dtype=np.int16) - np.array(self.img2[0], dtype=np.int16)
         self.m, self.n, self.dim = difference.shape
         self.samples = self.m * self.n
         # reshape it
@@ -57,11 +66,13 @@ class Data:
         plot_array_as_image(self.y, self.m, self.n, is_1d=True)
 
     def scan_img_bw(self, path_img1, path_img2):
-        img1 = Image.open(path_img1).convert('L')
-        img2 = Image.open(path_img2).convert('L')
+        self.img1 = list()
+        self.img2 = list()
+        self.img1.append(Image.open(path_img1).convert('L'))
+        self.img2.append(Image.open(path_img2).convert('L'))
 
         # take the difference between two images
-        difference = np.array(img1, dtype=np.int16) - np.array(img2, dtype=np.int16)
+        difference = np.array(self.img1[0], dtype=np.int16) - np.array(self.img2[0], dtype=np.int16)
         self.m, self.n = difference.shape
         self.samples = self.m * self.n
         # reshape it
@@ -90,6 +101,9 @@ class Data:
         self.X = np.array([np.full(self.features, 0.0, dtype=np.float64) for i in range(self.samples)])
         self.y = np.full(self.samples, 0, dtype=np.int32)
 
+        self.img1 = list()
+        self.img2 = list()
+
         for im_ind in range(start_from, len(img_filenames)):
             im_offset = im_ind - start_from
             if im_offset % 10 == 0 or im_offset == cnt_images - 1:
@@ -97,11 +111,11 @@ class Data:
                 print(img_filenames[im_ind])
 
             # IMAGES PART
-            img1 = Image.open(path_images1 + "/" + img_filenames[im_ind])
-            img2 = Image.open(path_images2 + "/" + img_filenames[im_ind])
+            self.img1.append(Image.open(path_images1 + "/" + img_filenames[im_ind]))
+            self.img2.append(Image.open(path_images2 + "/" + img_filenames[im_ind]))
 
             # take the difference between two images
-            difference = np.array(img1, dtype=np.int16) - np.array(img2, dtype=np.int16)
+            difference = np.array(self.img1[im_offset], dtype=np.int16) - np.array(self.img2[im_offset], dtype=np.int16)
             # reshape it
             difference = difference.reshape((self.img_size, self.features), order='C')
             # normalize them
@@ -137,6 +151,9 @@ class Data:
         self.X = np.array([np.full(self.features, 0.0, dtype=np.float64) for i in range(self.samples)])
         self.y = np.full(self.samples, 0, dtype=np.int32)
 
+        self.img1 = list()
+        self.img2 = list()
+
         for im_ind in range(start_from, len(img_filenames)):
             im_offset = im_ind - start_from
             if im_offset % 10 == 0 or im_offset == cnt_images - 1:
@@ -144,11 +161,12 @@ class Data:
                 print(img_filenames[im_ind])
 
             # IMAGES PART
-            img1 = Image.open(path_images1 + "/" + img_filenames[im_ind]).convert('L')
-            img2 = Image.open(path_images2 + "/" + img_filenames[im_ind]).convert('L')
+            self.img1.append(Image.open(path_images1 + "/" + img_filenames[im_ind]))
+            self.img2.append(Image.open(path_images2 + "/" + img_filenames[im_ind]))
 
             # take the difference between two images
-            difference = np.array(img1, dtype=np.int16) - np.array(img2, dtype=np.int16)
+            difference = np.array(self.img1[im_offset].convert('L'), dtype=np.int16) - np.array(
+                self.img2[im_offset].convert('L'), dtype=np.int16)
             # reshape it
             difference = difference.reshape((self.img_size, self.features), order='C')
             # normalize them
@@ -169,6 +187,7 @@ class Data:
             # stop criteria
             if im_offset == cnt_images - 1:
                 break
+
 
     # CLUSTERISATION
     def count_cluster(self, data, clusters, img_ind, ind1, ind2):
@@ -271,23 +290,55 @@ class SVM_Change_Detection_Classifier:
         j = (test_image_ind + 1) * self.D_test.clusters_per_image
         return self.clf.predict(self.D_test.X_clusters[i:j])
 
+    def get_initial_image(self, test_image_ind=0):
+        return self.D_test.img1[test_image_ind]
+    
+    def get_final_image(self, test_image_ind=0):
+        return self.D_test.img2[test_image_ind]
+
 
 path_im1 = './data/SECOND_train_set/im1/'
 path_im2 = './data/SECOND_train_set/im2/'
 path_labels = './data/SECOND_train_set/label1/'
-S_ = SVM_Change_Detection_Classifier()
-S_.get_images(path_im1, path_im2, path_labels, cnt_train_images=16, cnt_test_images=10,
-    start_from_train=0, start_from_test=120, cluster_size=16)
-S_.train()
 
-y_correct = S_.correct_labels(0).reshape((S_.D_test.n_clusters, S_.D_test.n_clusters))
-fig = plt.figure(1, (8, 8))
-plt.imshow(y_correct)
-plt.savefig('correct.png')
-plt.close(fig)
 
-y_predict = S_.predict_labels(0).reshape((S_.D_test.n_clusters, S_.D_test.n_clusters))
-fig = plt.figure(1, (8, 8))
-plt.imshow(y_predict)
-plt.savefig('predict.png')
-plt.close(fig)
+def make_D(X1, X2):
+    m, n, dim = X1.shape
+    X_dif = X1 - X2
+    D_cur = Data()
+    D_cur.m, D_cur.n = m, n
+    D_cur.X = np.zeros((m, n), dtype=np.float64)
+    D_cur.y = np.zeros((m, n))
+    D_cur.cnt_images = 1
+    D_cur.img_size = m * n
+
+    for i in range(m):
+        for j in range(n):
+            D_cur.X[i][j] = np.linalg.norm(X_dif[i][j])
+    D_cur.X = D_cur.X.reshape((m * n, 1))
+    D_cur.X = MinMaxScaler().fit_transform(D_cur.X)
+    D_cur.y = D_cur.y.reshape((m * n, 1))
+    
+    D_cur.clusterise_data(cluster_size=16)
+    return D_cur
+
+def predict(X1, X2):
+    S_ = SVM_Change_Detection_Classifier()
+    S_.get_images(path_im1, path_im2, path_labels, cnt_train_images=16, cnt_test_images=1,
+        start_from_train=0, start_from_test=120, cluster_size=16)
+    S_.train()
+    
+    D_cur = make_D(X1, X2)
+    y_predicted = S_.clf.predict(D_cur.X_clusters)
+    plot_array_as_image(D_cur.X_clusters, m=32, n=32, is_1d=True)
+
+    for i in range(y_predicted.shape[0]):
+        if y_predicted[i] == -1:
+            y_predicted[i] = 0
+        else:
+            y_predicted[i] = 1
+    return y_predicted
+
+X1 = np.array(Image.open(path_im1 + "/" + "00918.png"), dtype=np.int16)
+X2 = np.array(Image.open(path_im2 + "/" + "00918.png"), dtype=np.int16)
+plot_array_as_image(predict(X1, X2), m=32, n=32, is_1d=True)
