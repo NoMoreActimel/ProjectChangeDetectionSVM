@@ -6,7 +6,6 @@ from sklearn.model_selection import ShuffleSplit
 from sklearn.preprocessing import MinMaxScaler # normalization
 import matplotlib.pyplot as plt # plotting
 from matplotlib import cm
-import seaborn # plottin
 from PIL import Image # image opening
 import math
 import os
@@ -301,7 +300,6 @@ path_im1 = './data/SECOND_train_set/im1/'
 path_im2 = './data/SECOND_train_set/im2/'
 path_labels = './data/SECOND_train_set/label1/'
 
-
 def make_D(X1, X2):
     m, n, dim = X1.shape
     X_dif = X1 - X2
@@ -322,14 +320,16 @@ def make_D(X1, X2):
     D_cur.clusterise_data(cluster_size=16)
     return D_cur
 
-def predict(X1, X2):
+def train():
     S_ = SVM_Change_Detection_Classifier()
     S_.get_images(path_im1, path_im2, path_labels, cnt_train_images=16, cnt_test_images=1,
         start_from_train=0, start_from_test=120, cluster_size=16)
     S_.train()
+    return S_
     
+def predict(X1, X2):
     D_cur = make_D(X1, X2)
-    y_predicted = S_.clf.predict(D_cur.X_clusters)
+    y_predicted = CLF.clf.predict(D_cur.X_clusters)
     plot_array_as_image(D_cur.X_clusters, m=32, n=32, is_1d=True)
 
     for i in range(y_predicted.shape[0]):
@@ -337,8 +337,21 @@ def predict(X1, X2):
             y_predicted[i] = 0
         else:
             y_predicted[i] = 1
-    return y_predicted
+            
+    y_predicted = y_predicted.reshape((32, 32))
+    y_predicted_hd = np.zeros((512, 512))
+
+    for i in range(32):
+        for j in range(32):
+            if y_predicted[i][j]:
+                for i_hd in range(16):
+                    for j_hd in range(16):
+                        y_predicted_hd[i * 16 + i_hd][j * 16 + j_hd] = 1
+    return y_predicted_hd
+
+CLF = train()
 
 X1 = np.array(Image.open(path_im1 + "/" + "00918.png"), dtype=np.int16)
 X2 = np.array(Image.open(path_im2 + "/" + "00918.png"), dtype=np.int16)
-plot_array_as_image(predict(X1, X2), m=32, n=32, is_1d=True)
+y_predicted = predict(X1, X2)
+plot_array_as_image(y_predicted, m=512, n=512, is_1d=True)
